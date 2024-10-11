@@ -1,0 +1,120 @@
+---
+title: "Budget Report"
+author: "CP"
+date: "06/05/2022"
+output: html_document
+---
+
+# Summary of transactions from `r format(trans_file_date, format = "%B %Y")`
+ 
+
+## Buckets
+
+```{r, echo=FALSE}
+### Create summary table for expense groupings
+ds_trans_buckets <- ds_trans_budget %>% 
+  group_by(expense_group_id) %>% 
+  summarise(expense_group = unique(expense_group),
+            totals= sum(amount)) %>% 
+  ungroup() %>% 
+  filter(!(expense_group_id == 900))
+
+ds_trans_buckets <- ds_trans_buckets %>% 
+        rbind(
+          rt_budget %>% 
+            filter(category_id == 300) %>% # adds 'calculated savings'
+            select(expense_group_id, expense_group) %>% 
+            #calculates savings from income(0), expenses (100), and wants (200)
+            mutate(totals = with(ds_trans_buckets,
+                                   sum(totals[
+                                  expense_group_id %in% c(0,100,200)])))) %>% 
+        mutate(pct = (totals
+                      /totals[expense_group_id == 0])
+                      *100, 
+                pct = replace(pct, expense_group_id %in% c(400, 900), NA))
+
+ds_trans_buckets %>% select(-expense_group_id) %>% 
+  kable() %>% 
+  kable_styling()
+```
+
+Budgeted savings = $`r budgeted_savings`
+
+Amount written off = $`r write_off`
+
+```{r, echo = FALSE}
+df_savings %>% select(-c(budget_group_id, limit, date)) %>% 
+  kable() %>% 
+  kable_styling()
+```
+
+Categories marked as Actual savings
+```{r, echo = FALSE}
+df_budget %>% 
+  filter(budget_group_id %in% v.act_save) %>% 
+  select(budget_group_id, budget_group) %>% 
+  kable() %>% 
+  kable_styling()
+```
+
+Categories marked as Over spent
+```{r, echo = FALSE}
+df_budget %>% 
+  filter(budget_group_id %in% v.act_over_spend) %>% 
+  select(budget_group_id, budget_group) %>% 
+  kable() %>% 
+  kable_styling()
+```
+
+#### Check for miscellaneous/mis-labbelled categories and money spent on work items.
+```{r, echo=FALSE}
+dt_log_budget %>% 
+  filter((budget_group_id %in% c(902, 903) & amount != 0) | 
+          budget_group_id == 901 & date == last(date)) %>% 
+  kable() %>% 
+  kable_styling()
+```
+
+```{r, echo=FALSE, fig.width=unit(18, "cm"),fig.height=unit(20, "cm")}
+dt_log_budget %>% 
+  mutate(amount = -(amount),
+         cum_average = -(cum_average),
+         yr_average = -(yr_average)) %>% 
+  filter(budget_group_id != 0 & budget_group_id < 300) %>% 
+  ggplot(aes(x = date - days(30))) +
+  geom_col(aes(y = limit), 
+           data = . %>% filter(grepl("10$", diff_flag)), # savings
+           fill = '#7bab90') + # colour green
+  geom_col(aes(y = amount), fill = '#b2b5bf') + #colour grey
+  geom_col(aes(y = amount),
+           data = . %>% filter(grepl("20$", diff_flag)), # overspending
+           fill = '#ff9c9c') + #colour red
+  geom_col(aes(y = limit),
+           data = . %>% filter(grepl("20$", diff_flag)), # overspending
+           fill = '#b2b5bf') + # colour grey
+  geom_line(aes(y = limit), colour = "red") +
+  geom_line(aes(y = cum_average), colour = "black") +
+  geom_line(aes(y = yr_average), colour = "#1b5926") + # colour dark green
+  geom_line(aes(
+      y = cum_balance, 
+      group = interaction(budget_group_id, write_off_count)),
+    colour = "blue") +
+  facet_wrap(vars(budget_group), scales = "free", ncol = 3) +
+  scale_x_datetime(date_breaks = "2 months", 
+                   #date_minor_breaks = "3 months",
+                   date_labels = "%b-%y",
+               limits = c(min(dt_log_budget$date) - days(32), 
+                          max(dt_log_budget$date))
+               ) +
+  theme_light()
+```
+
+##### Key Balances
+```{r, echo = FALSE}
+dt_log_budget %>% 
+  filter(date == trans_file_date &
+         budget_group_id %in% c(104, 105, 200:299)) %>% 
+  select(budget_group, limit, amount, cum_balance) %>% 
+  kable() %>% 
+  kable_styling(full_width = FALSE)
+```

@@ -3,7 +3,6 @@ title: "Budget Report"
 author: "CP"
 date: "06/05/2022"
 output: html_document
-newline
 ---
 
 # Summary of transactions from `r format(trans_file_date, format = "%B %Y")`

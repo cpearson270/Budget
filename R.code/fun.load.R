@@ -1,8 +1,9 @@
 #### fun.load (formerly fun_main)
 ## create functions required for main .R script
 ## REQUIRES: NA
+## CALLED BY: load.bank_trans.R
 ## Project: Budget Tracker 4.0 - 26/02/2023 - Moved from excel tracker to R
-## Last update: 26/02/2023
+## Last update: 11/01/2025 - load in for bank CSV
 
 ### select and load most recent .RDS file in the 'R.code/ref_data' sub-folder 
   #with same name as file ####
@@ -45,32 +46,34 @@ name_file <-
 }
 
 #### load commbank .csv transactions
-load_file_comm.csv <- 
-  function (file_name, path = "R.data/transactions") 
-df_trans_load<-read_csv(file.path(path,file_name),
-                        col_names = c("date", "amount", 
-                                      "description", "balance")) %>%
+load_file_comm.csv <- function (file_name, path = "R.data/transactions") {
+  df_trans_load<-read_csv(file.path(path,file_name),
+                          col_names = c("date", "amount", 
+                                        "description", "balance")) %>%
   select(!"balance") %>% 
   # dates stored as text in .csv
   mutate(date = lubridate::dmy(date),
-         description = str_to_lower(description)) %>%
+        description = str_to_lower(description)) %>%
   janitor::remove_empty(which = c("rows", "cols"))
+}
 
 #### load ing .csv transactions
-load_file_ing.csv <- 
-  function (file_name, path = "R.data/transactions") 
-    df_trans_load<-read_csv(file.path(path,file_name),
-                            col_names = c("date", "amount", 
-                                          "description", "balance")) %>%
-  select(!"balance") %>% 
-  # dates stored as text in .csv
-  mutate(date = lubridate::dmy(date),
-         description = str_to_lower(description)) %>%
-  janitor::remove_empty(which = c("rows", "cols"))
+load_file_ing.csv <- function (file_name, path = "R.data/transactions") {
+  df_trans_load<-read_csv(file.path(path,file_name),
+                            col_names = TRUE) %>%
+    janitor::clean_names() %>% 
+    unite("amount", "credit", "debit", na.rm = TRUE, remove = TRUE) %>% 
+    select(!"balance") %>% 
+    # dates stored as text in .csv
+    mutate(amount = as.numeric(amount),
+           date = lubridate::dmy(date),
+           description = str_to_lower(description)) %>%
+    janitor::remove_empty(which = c("rows", "cols"))
+}
 
 ### Parent group columns calculation ####
 
-## calculates budget group and expense group colums (names and ids) using
+## calculates budget group and expense group columns (names and ids) using
 #category_id column
 
 

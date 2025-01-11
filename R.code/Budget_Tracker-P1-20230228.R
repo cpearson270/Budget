@@ -18,9 +18,9 @@ library(lubridate)
 library(knitr)
 library(kableExtra)
 
-#source("R.code/fun.load.R")
+#source("R.code/fun.load.R") ##moved loadin to load.tables.R
 
-### Load tables
+### Load tables of previous records
 source("R.code/load.tables.R")
 
 ### Load User Values

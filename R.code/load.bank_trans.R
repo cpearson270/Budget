@@ -3,7 +3,7 @@
 ## REQUIRES: ask.trans_file_date.R
 ## CALLED BY: Budget Tracker 4.0
 ## Project: Budget Tracker 4.0 - 26/02/2023 - Moved from excel tracker to R
-## Last update: 11/08/2024
+## Last update: 11/01/2025 - add load in for ING CSV
 
 # BETA--added load in for ING csv. 
 
@@ -35,7 +35,7 @@ if (str_detect(v.trans_file_date, '^$')) {
   df_trans.jt <- name_file(filter = "^ing-jt") %>% 
     load_file_ing.csv()
   
-  df_trans_load <- rows_append(df_trans.ca, df_trans.mc, 
+  df_trans_load <- bind_rows(df_trans.ca, df_trans.mc, 
                               df_trans.ed, df_trans.jt)
 } else {
   file_trans <- name_file(filter = v.trans_file_date)
@@ -57,7 +57,8 @@ if (str_detect(v.trans_file_date, '^$')) {
         select(date, description, category, amount, notes) %>% 
         janitor::remove_empty(which = c("rows", "cols"))
     }
-  } else if (str_detect(file_trans, "^commbank")) {
+  } else {
+    #assume other files are Commbank and/or ING
     df_trans.ca <- name_file(filter = paste0("(?=.*",
                                              v.trans_file_date,
                                              ")(?=.*ca).*\\.csv$")) %>% 
@@ -68,8 +69,19 @@ if (str_detect(v.trans_file_date, '^$')) {
                                              ")(?=.*mc).*\\.csv$")) %>% 
       load_file_comm.csv()
   
-  df_trans_load <- rows_append(df_trans.ca, df_trans.mc)
-  rm(df_trans.ca, df_trans.mc)
+    df_trans.ed <- name_file(filter = paste0("(?=.*",
+                                             v.trans_file_date,
+                                             ")(?=.*ed).*\\.csv$")) %>% 
+      load_file_ing.csv()
+    
+    df_trans.jt <- name_file(filter = paste0("(?=.*",
+                                             v.trans_file_date,
+                                             ")(?=.*jt).*\\.csv$")) %>% 
+      load_file_ing.csv()
+    
+    df_trans_load <- bind_rows(df_trans.ca, df_trans.mc, 
+                                 df_trans.ed, df_trans.jt)
+    rm(df_trans.ca, df_trans.mc, df_trans.ed, df_trans.jt)
   }
 }
 rm(file_trans, path_trans)
